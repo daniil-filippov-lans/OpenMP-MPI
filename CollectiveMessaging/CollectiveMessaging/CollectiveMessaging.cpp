@@ -3,46 +3,86 @@
 
 using namespace std;
 
-int main(int* argc, char** argv) {
-	int ProcNum, ProcRank, RecvRank, M = 4, currentLoop = M + 1, message, totalSum = 0;
+// lab 1
+void Messaging(int M)
+{
+	int ProcNum, ProcRank, RecvRank, currentLoop = M + 1;
 	MPI_Status Status;
-
-
-	MPI_Init(argc, &argv);
 
 	MPI_Comm_size(MPI_COMM_WORLD, &ProcNum);
 	MPI_Comm_rank(MPI_COMM_WORLD, &ProcRank);
 
-	while (M != 0) {
+	while (M > 0) {
 		if (ProcRank == 0) {
-
 			cout << "Loop: " << currentLoop - M << endl;
-			message = ProcRank;
-			MPI_Send(&message, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
+			MPI_Send(&ProcRank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
 			MPI_Recv(&RecvRank, 1, MPI_INT, ProcNum - 1, MPI_ANY_TAG, MPI_COMM_WORLD, &Status);
-			cout << "Senior process: " << ProcRank << " recieve message from: " << RecvRank << endl;
-
-			M--;
+			cout << "#1 process: " << ProcRank << " from: " << RecvRank << endl;
 		}
 		else {
-			message = ProcRank;
 			MPI_Recv(&RecvRank, 1, MPI_INT, ProcRank - 1, MPI_ANY_TAG, MPI_COMM_WORLD, &Status);
-			cout << "Junior process: " << ProcRank << " recieve message from: " << RecvRank << endl;
+			cout << "Process: " << ProcRank << " from: " << RecvRank << endl;
 
 			if (ProcRank + 1 != ProcNum)
-				MPI_Send(&message, 1, MPI_INT, ProcRank + 1, 0, MPI_COMM_WORLD);
+				MPI_Send(&ProcRank, 1, MPI_INT, ProcRank + 1, 0, MPI_COMM_WORLD);
 			else
-				MPI_Send(&message, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
+				MPI_Send(&ProcRank, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
 		}
-		MPI_Reduce(&message, &totalSum, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+		M--;
+	}
+}
+// lab 2
+void CollectiveMessaging(int M)
+{
+	int ProcNum, ProcRank, RecvRank, SendRank, currentLoop = M + 1, message, totalSum = 0;
+	MPI_Status Status;
+
+	MPI_Comm_size(MPI_COMM_WORLD, &ProcNum);
+	MPI_Comm_rank(MPI_COMM_WORLD, &ProcRank);
+
+
+	while (M != 0) {
+
+		if (ProcRank == 0) {
+			cout << "Loop: " << currentLoop - M << endl;
+			SendRank = ProcRank + 1;
+			RecvRank = ProcNum - 1;
+			MPI_Bcast(&SendRank, 1, MPI_INT, ProcRank, MPI_COMM_WORLD);
+			cout << "Senior process: " << ProcRank << " recieve message from: " << RecvRank << endl;
+		}
+		else {
+			if (ProcRank == ProcNum - 1) {
+				SendRank = 0;
+				RecvRank = ProcRank - 1;
+				MPI_Bcast(&SendRank, 1, MPI_INT, ProcRank, MPI_COMM_WORLD);
+				cout << "Junior process: " << ProcRank << " recieve message from: " << RecvRank << endl;
+			}
+			else {
+				SendRank = ProcRank - 1;
+				RecvRank = ProcRank + 1;
+				MPI_Bcast(&SendRank, 1, MPI_INT, ProcRank, MPI_COMM_WORLD);
+				cout << "Junior process: " << ProcRank << " recieve message from: " << SendRank << endl;
+			}
+		}
+		M--;
+		MPI_Barrier(MPI_COMM_WORLD);
+
 	}
 
 
-	MPI_Barrier(MPI_COMM_WORLD);
 
 	if (ProcRank == 0) {
-		cout << "Total sum " << M << " loop of process: " << totalSum << endl;
+		cout << "End " << currentLoop << " loop of " << endl;
 	}
+}
+
+int main(int* argc, char** argv) {
+	int M = 4;
+
+	MPI_Init(argc, &argv);
+
+	//Messaging(M);
+	CollectiveMessaging(M);
 
 	MPI_Finalize();
 
